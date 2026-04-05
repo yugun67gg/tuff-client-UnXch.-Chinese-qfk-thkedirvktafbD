@@ -1,36 +1,89 @@
 (function() {
   'use strict';
-  console.log('[OneBlockLoader] Initializing...');
+  console.log('[OneBlockLoader] v2.0 Initializing...');
   
-  // Ensure eaglercraftXOpts exists
-  if (typeof window.eaglercraftXOpts === 'undefined') {
-    console.log('[OneBlockLoader] Creating window.eaglercraftXOpts');
-    window.eaglercraftXOpts = {};
+  // Wait for Eaglercraft to load
+  function waitForEaglercraft() {
+    return new Promise((resolve) => {
+      const checkInterval = setInterval(() => {
+        // Check if game is loaded and main function exists
+        if (window.main && typeof window.main === 'function') {
+          clearInterval(checkInterval);
+          console.log('[OneBlockLoader] Eaglercraft detected');
+          resolve(true);
+        }
+      }, 500);
+      
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        console.log('[OneBlockLoader] Eaglercraft timeout');
+        resolve(false);
+      }, 10000);
+    });
   }
-  
-  // Initialize worldTypes array if it doesn't exist
-  if (!Array.isArray(window.eaglercraftXOpts.worldTypes)) {
-    window.eaglercraftXOpts.worldTypes = [];
+
+  // Register OneBlock world type with Eaglercraft
+  async function registerOneBlock() {
+    try {
+      await waitForEaglercraft();
+      
+      // Ensure eaglercraftXOpts exists
+      if (!window.eaglercraftXOpts) {
+        window.eaglercraftXOpts = {};
+      }
+
+      // Add OneBlock to world generators
+      if (!window.eaglercraftXOpts.worldTypes) {
+        window.eaglercraftXOpts.worldTypes = [];
+      }
+
+      // Define OneBlock world type
+      const oneBlockWorldType = {
+        id: 'oneblock',
+        name: 'OneBlock',
+        description: 'Survive on a single block with unlimited inventory',
+        jarMod: 'oneblock-1.12.2-1.1.2.jar',
+        icon: '📦'
+      };
+
+      // Check if not already registered
+      const exists = window.eaglercraftXOpts.worldTypes.some(
+        wt => wt.id === 'oneblock'
+      );
+
+      if (!exists) {
+        window.eaglercraftXOpts.worldTypes.push(oneBlockWorldType);
+        console.log('[OneBlockLoader] ✅ OneBlock registered');
+      }
+
+      // Also store in global registry
+      window.ONEBLOCK_CONFIG = {
+        enabled: true,
+        worldType: oneBlockWorldType,
+        modJar: 'oneblock-1.12.2-1.1.2.jar'
+      };
+
+      // Dispatch ready event
+      document.dispatchEvent(
+        new CustomEvent('oneblockReady', { detail: oneBlockWorldType })
+      );
+
+      console.log('[OneBlockLoader] Ready!');
+      return true;
+
+    } catch (error) {
+      console.error('[OneBlockLoader] Error:', error);
+      return false;
+    }
   }
-  
-  // Register OneBlock world type
-  const oneblockWorldType = {
-    id: 'oneblock',
-    name: 'OneBlock',
-    jarMod: 'oneblock-1.12.2-1.1.2.jar',
-    enabled: true
-  };
-  
-  // Check if already registered
-  const exists = window.eaglercraftXOpts.worldTypes.some(wt => wt.id === 'oneblock');
-  
-  if (!exists) {
-    window.eaglercraftXOpts.worldTypes.push(oneblockWorldType);
-    console.log('[OneBlockLoader] ✅ OneBlock world type registered:', oneblockWorldType);
+
+  // Auto-initialize
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(registerOneBlock, 1000);
+    });
   } else {
-    console.log('[OneBlockLoader] OneBlock already registered');
+    setTimeout(registerOneBlock, 1000);
   }
-  
-  window.OneBlockLoaded = true;
-  console.log('[OneBlockLoader] Complete!');
 })();
